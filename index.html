@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>介護タクシー 見積もり君（現行運賃）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#0d9488;        /* メインの色（陽気ブランドのティール） */
+    --teal-dark:#0f766e;
+    --teal-deep:#134e4a;
+    --orange:#ea580c;      /* アクセントの色 */
+    --bg:#f4f7f6;
+    --card:#ffffff;
+    --line:#dbe6e3;
+    --ink:#1f2d2b;
+    --ink-soft:#5b6b68;
+    --field:#f8faf9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Noto Sans JP',"Hiragino Sans","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+    padding:16px;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:460px;margin:0 auto;}
+
+  /* ヘッダー */
+  .head{
+    background:linear-gradient(135deg,var(--teal),var(--teal-deep));
+    color:#fff;border-radius:20px 20px 0 0;
+    padding:26px 22px 22px;
+    position:relative;
+  }
+  .head h1{font-size:24px;font-weight:900;letter-spacing:.5px;}
+  .head p{font-size:13px;opacity:.9;margin-top:4px;}
+  /* 「現行運賃」の目印バッジ（新運賃版と見分けやすくするため） */
+  .badge{
+    position:absolute;top:18px;right:18px;
+    background:var(--orange);color:#fff;
+    font-size:12px;font-weight:900;letter-spacing:.5px;
+    padding:6px 12px;border-radius:999px;
+    box-shadow:0 4px 12px rgba(234,88,12,.35);
+  }
+
+  /* 本体カード */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-top:none;
+    border-radius:0 0 20px 20px;padding:22px;
+    box-shadow:0 12px 30px rgba(19,78,74,.08);
+  }
+
+  .field{margin-bottom:18px;}
+  label{display:block;font-size:14px;font-weight:700;color:var(--teal-dark);margin-bottom:7px;}
+  .hint{font-size:12px;color:var(--ink-soft);font-weight:400;}
+
+  input,select{
+    width:100%;font-size:17px;font-family:inherit;color:var(--ink);
+    background:var(--field);border:1.5px solid var(--line);border-radius:12px;
+    padding:13px 14px;outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  input:focus,select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,.15);}
+  select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230d9488' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px;}
+
+  /* 走行距離を目立たせる箱 */
+  .highlight{
+    background:#effcfa;border:2px solid var(--teal);border-radius:16px;
+    padding:16px;margin-bottom:22px;
+  }
+  .highlight label{font-size:16px;}
+  .highlight input{background:#fff;font-size:22px;font-weight:700;}
+
+  /* グーグルマップで距離を調べる箱 */
+  .maps-box{
+    background:var(--field);border:1.5px solid var(--line);border-radius:16px;
+    padding:16px;margin-bottom:14px;
+  }
+  .maps-title{
+    font-size:14px;font-weight:700;color:var(--teal-dark);margin-bottom:12px;
+  }
+  .maps-box .field{margin-bottom:11px;}
+  .maps-box label{font-size:13px;margin-bottom:5px;}
+  .maps-btn{
+    width:100%;background:var(--teal);color:#fff;font-size:16px;font-weight:700;
+    border:none;border-radius:12px;padding:13px;letter-spacing:.5px;
+  }
+  .maps-btn:hover{filter:brightness(1.05);}
+  .maps-warn{
+    font-size:12.5px;color:var(--orange);font-weight:700;
+    margin-top:9px;display:none;
+  }
+  .maps-note{font-size:12px;color:var(--ink-soft);margin-top:9px;line-height:1.5;}
+
+  .two{display:flex;gap:12px;}
+  .two .field{flex:1;}
+
+  /* 時間加算の箱（渋滞でゆっくり走る分の料金） */
+  .time-box{
+    background:var(--field);border:1.5px solid var(--line);border-radius:16px;
+    padding:16px;margin-bottom:18px;
+  }
+  .time-title{
+    font-size:15px;font-weight:700;color:var(--teal-dark);margin-bottom:12px;
+  }
+  .time-title span{font-weight:400;font-size:11px;color:var(--ink-soft);}
+  .time-box .field{margin-bottom:11px;}
+  .time-box label{font-size:13px;margin-bottom:5px;}
+  /* バスレーン補正のチェックボックス（押すとオン・オフが切り替わる四角い印） */
+  .check{
+    display:flex;align-items:flex-start;gap:9px;
+    background:#fff;border:1.5px solid var(--line);border-radius:12px;
+    padding:11px 12px;margin-bottom:11px;cursor:pointer;
+  }
+  .check input{
+    width:22px;height:22px;flex:none;margin:0;padding:0;
+    accent-color:var(--teal);
+  }
+  .check span{font-size:13px;font-weight:400;color:var(--ink);line-height:1.4;}
+  /* 時間加算の概算を出す帯 */
+  .time-view{
+    display:flex;justify-content:space-between;align-items:center;
+    background:#effcfa;border:1.5px solid var(--teal);border-radius:12px;
+    padding:11px 14px;font-size:14px;font-weight:700;color:var(--teal-dark);
+  }
+  .time-view b{font-size:20px;font-weight:900;color:var(--teal-deep);}
+  /* 空いてるときの目安（確認用なので控えめな見た目） */
+  .time-view.sub{
+    background:#fff;border:1.5px solid var(--line);
+    color:var(--ink-soft);font-size:13px;font-weight:400;margin-bottom:8px;
+  }
+  .time-view.sub b{font-size:15px;font-weight:700;color:var(--ink);}
+  .time-note{font-size:12px;color:var(--ink-soft);margin-top:9px;line-height:1.5;}
+
+  .divider{height:1px;background:var(--line);margin:6px 0 18px;}
+
+  /* その他料金の行 */
+  .other-row{display:flex;gap:8px;margin-bottom:8px;}
+  .other-row .other-name{flex:1.5;font-size:15px;padding:11px 12px;}
+  .other-row .other-amt{flex:1;font-size:15px;padding:11px 12px;}
+  .other-row .del-other{
+    width:44px;flex:none;background:#f1f5f4;color:var(--ink-soft);
+    font-size:22px;font-weight:700;border-radius:10px;padding:0;letter-spacing:0;
+  }
+  .other-row .del-other:hover{background:#fde4d8;color:var(--orange);filter:none;}
+
+  /* 定型メニュー（プルダウン）の行 */
+  .preset-tag{
+    display:inline-block;font-size:11px;font-weight:700;color:var(--teal-dark);
+    background:#effcfa;border:1px solid var(--teal);border-radius:6px;
+    padding:3px 9px;margin-bottom:8px;
+  }
+  .preset-row .other-name,
+  .preset-row .other-amt{padding:11px 34px 11px 12px;font-size:15px;}
+  .preset-spacer{width:44px;flex:none;}
+
+  /* 定型メニューの見出し */
+  /* 定型メニューの見出し（車椅子・転院退院サポート・階段介助・付き添い） */
+  .preset-label{font-size:17px;font-weight:700;color:var(--orange);margin:14px 0 7px;}
+  .preset-label:first-child{margin-top:2px;}
+  .preset-label span{font-weight:400;font-size:11px;color:var(--ink-soft);}
+
+  /* 階段介助・付き添いのステッパー（−／金額／＋） */
+  .stair .stepper,
+  .tsukisoi .stepper{display:flex;gap:8px;flex:1;}
+  .step-btn{
+    width:56px;flex:none;background:var(--field);color:var(--teal-dark);
+    border:1.5px solid var(--teal);border-radius:12px;
+    font-size:24px;font-weight:900;padding:0;letter-spacing:0;line-height:1;
+  }
+  .step-btn:hover{background:#effcfa;filter:none;}
+  .stair .other-amt,
+  .tsukisoi .tsukisoi-view{
+    flex:1;text-align:center;font-size:18px;font-weight:700;
+    color:var(--ink);
+    background:#fff;padding:11px 12px;
+    border:1.5px solid var(--line);border-radius:12px;
+    font-family:inherit;width:100%;box-sizing:border-box;
+  }
+  .tsukisoi .tsukisoi-view{font-size:16px;}
+  /* 「手入力」「その他費用」の見出し */
+  .manual-label{font-size:17px;font-weight:700;color:var(--orange);margin:18px 0 7px;}
+  .manual-label span{font-weight:400;font-size:11px;color:var(--ink-soft);}
+  /* その他費用（金額だけ入れる欄） */
+  .other-row.sonota .other-amt{flex:1;font-size:17px;padding:13px 14px;}
+
+  /* 「その他料金」の見出し */
+  label.other-title{font-size:19px;font-weight:700;color:var(--orange);margin-bottom:9px;}
+  label.other-title .hint{font-size:12px;color:var(--ink-soft);font-weight:400;}
+
+  .addBtn{
+    width:100%;background:var(--field);color:var(--teal-dark);
+    border:1.5px dashed var(--teal);font-size:15px;font-weight:700;
+    padding:11px;border-radius:12px;letter-spacing:0;
+  }
+  .addBtn:hover{background:#effcfa;filter:none;}
+
+  /* 計算ボタン */
+  button{
+    width:100%;font-family:inherit;font-size:18px;font-weight:900;color:#fff;
+    background:var(--orange);border:none;border-radius:14px;padding:16px;
+    cursor:pointer;letter-spacing:1px;transition:filter .15s,transform .05s;
+  }
+  button:hover{filter:brightness(1.05);}
+  button:active{transform:translateY(1px);}
+
+  /* 結果 */
+  .result{
+    margin-top:20px;background:linear-gradient(135deg,#effcfa,#e3f5f2);
+    border:1px solid var(--teal);border-radius:16px;padding:20px;
+    display:none;
+  }
+  .result.show{display:block;animation:pop .25s ease;}
+  @keyframes pop{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .result .breakdown{font-size:14px;color:var(--ink-soft);}
+  .result .breakdown .row{display:flex;justify-content:space-between;padding:3px 0;}
+  .result .breakdown .row span:last-child{font-weight:700;color:var(--ink);}
+  .result .total{
+    text-align:center;margin-top:14px;padding-top:14px;border-top:2px dashed var(--teal);
+  }
+  .result .total .lbl{font-size:15px;font-weight:700;color:var(--teal-dark);}
+  .result .total .amt{font-size:38px;font-weight:900;color:var(--teal-deep);line-height:1.2;}
+  .result .total .amt small{font-size:20px;}
+
+  .foot{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:16px;}
+  .foot b{color:var(--orange);}
+
+  /* 取扱説明書へのリンクボタン */
+  .manual-link{
+    display:block;width:100%;box-sizing:border-box;
+    margin-top:14px;padding:13px;
+    background:#effcfa;color:var(--teal-dark);
+    border:1.5px solid var(--teal);border-radius:14px;
+    font-size:14px;font-weight:700;text-align:center;
+    text-decoration:none;cursor:pointer;
+  }
+  .manual-link:hover{background:#d7f5f0;}
+  .manual-link .sub{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);margin-top:3px;}
+
+  /* 使い方の折りたたみ欄（押すと開いて、もう一度押すと閉じます） */
+  .howto{
+    margin-top:16px;background:var(--field);
+    border:1.5px solid var(--teal);border-radius:14px;
+    overflow:hidden;
+  }
+  .howto > summary{
+    list-style:none;cursor:pointer;
+    padding:14px;font-size:15px;font-weight:700;color:var(--teal-dark);
+    text-align:center;
+  }
+  .howto > summary::-webkit-details-marker{display:none;}
+  .howto[open] > summary{border-bottom:1px solid var(--line);background:#effcfa;}
+  .howto .howto-body{padding:4px 16px 18px;background:#fff;}
+  .howto h3{
+    font-size:15px;font-weight:700;color:var(--orange);
+    margin:16px 0 6px;padding-top:12px;border-top:1px dashed var(--line);
+  }
+  .howto h3:first-child{border-top:none;padding-top:4px;margin-top:8px;}
+  .howto p{font-size:13.5px;line-height:1.75;color:var(--ink);margin-bottom:6px;}
+  .howto ol,.howto ul{margin:0 0 6px 1.3em;}
+  .howto li{font-size:13.5px;line-height:1.75;margin-bottom:5px;}
+  .howto .warn{
+    background:#fff7ed;border:1.5px solid var(--orange);border-radius:10px;
+    padding:11px 13px;font-size:13px;line-height:1.7;color:var(--ink);margin-top:14px;
+  }
+  .howto b{color:var(--teal-dark);}
+
+  /* PDF概算見積書のボタン */
+  .pdf-btn{
+    width:100%;margin-top:16px;background:var(--teal);color:#fff;
+    font-size:16px;font-weight:700;border:none;border-radius:12px;
+    padding:14px;letter-spacing:.5px;
+  }
+  .pdf-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+  .pdf-note b{color:var(--orange);}
+
+  /* ============================================================
+     PDF概算見積書の紙
+     ふだんは隠れていて、ボタンを押すと画面いっぱいに出ます
+     ============================================================ */
+  #sheet{display:none;}
+  #sheet.show{
+    display:block;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:#fff;z-index:9999;overflow:auto;-webkit-overflow-scrolling:touch;
+  }
+  /* 見積書の上に出る操作バー（印刷には出ません） */
+  .sheet-bar{
+    display:flex;gap:10px;padding:12px;
+    background:var(--bg);border-bottom:1px solid var(--line);
+    position:sticky;top:0;
+  }
+  .sheet-bar button{
+    flex:1;font-size:15px;font-weight:700;padding:13px;border-radius:12px;
+    letter-spacing:0;
+  }
+  .sheet-bar .close-btn{background:#e2e8e6;color:var(--ink);}
+  #sheet .s-wrap{padding:14mm 12mm;color:#000;font-size:12pt;line-height:1.7;max-width:190mm;margin:0 auto;}
+  #sheet h2{font-size:18pt;font-weight:900;text-align:center;margin-bottom:4mm;letter-spacing:1pt;}
+  #sheet .s-date{text-align:right;font-size:10.5pt;margin-bottom:6mm;}
+  #sheet table{width:100%;border-collapse:collapse;margin-bottom:5mm;}
+  #sheet th,#sheet td{border:1px solid #000;padding:2.5mm 3mm;font-size:11pt;}
+  #sheet th{width:38%;background:#f0f0f0;text-align:left;font-weight:700;}
+  #sheet td.num{text-align:right;}
+  #sheet .s-total th,#sheet .s-total td{font-size:14pt;font-weight:900;background:#e8e8e8;}
+  #sheet .s-note{font-size:10pt;line-height:1.6;border:1px solid #000;padding:3mm;margin-top:4mm;}
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .wrap{display:none !important;}
+    .sheet-bar{display:none !important;}
+    #sheet, #sheet.show{
+      display:block !important;position:static !important;overflow:visible !important;
+    }
+    @page{size:A4;margin:0;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <span class="badge">現行運賃</span>
+    <h1>介護タクシー 見積もり君</h1>
+    <p>沖縄県本島地区・福祉輸送 自動認可運賃 対応</p>
+  </div>
+
+  <div class="card">
+    <!-- 運賃区分の選択（えらぶとメーター代が自動で入ります） -->
+    <div class="two">
+      <div class="field">
+        <label>車種</label>
+        <select id="sharyu"></select>
+      </div>
+      <div class="field">
+        <label>運賃区分</label>
+        <select id="kubun"></select>
+      </div>
+    </div>
+
+    <!-- グーグルマップで距離を調べる（無料・APIキー不要） -->
+    <div class="maps-box">
+      <div class="maps-title">🗺️ マップで距離を調べる</div>
+      <div class="field">
+        <label>出発地</label>
+        <input type="text" id="mapFrom" placeholder="例：那覇空港／住所を入力">
+      </div>
+      <div class="field">
+        <label>目的地</label>
+        <input type="text" id="mapTo" placeholder="例：とよみ生協病院">
+      </div>
+      <button type="button" class="maps-btn" id="mapBtn">🗺️ グーグルマップで距離を調べる</button>
+      <div class="maps-warn" id="mapWarn">出発地・目的地のどちらかを入れてください。</div>
+      <div class="maps-note">別の画面でグーグルマップが開きます。表示された<b>距離（km）と所要時間（分）の両方</b>を写してください。km は下の「走行距離」、分は「時間加算」の欄です。</div>
+    </div>
+
+    <!-- 走行距離 -->
+    <div class="highlight">
+      <label>走行距離（km）<span class="hint">／ マップで調べた距離を入力</span></label>
+      <input type="number" id="km" value="0" min="0" step="0.1" inputmode="decimal">
+    </div>
+
+    <!-- 時間加算（渋滞でゆっくり走る・止まっている分の料金） -->
+    <div class="time-box">
+      <div class="time-title">⏱️ 時間加算 <span id="jikanKubun"></span></div>
+      <div class="field">
+        <label>所要時間（分）<span class="hint">／ マップに出た時間をそのまま</span></label>
+        <input type="number" id="jamMin" value="" placeholder="0" min="0" step="1" inputmode="numeric">
+      </div>
+      <label class="check" for="busLane">
+        <input type="checkbox" id="busLane">
+        <span>国道58号などバスレーンを通る<br>（介護タクシーは通行できるので加算を抑えます）</span>
+      </label>
+      <div class="time-view sub">
+        <span>空いてるときの目安</span><b id="normView">－</b>
+      </div>
+      <div class="time-view">
+        <span>時間加算の概算</span><b id="jikanView">0円</b>
+      </div>
+      <div class="time-note">
+        マップに出た「4.0 km／11 分」の<b>両方</b>を写します。
+        km は上の「走行距離」へ、分はこの欄へ。
+        空いてるときの目安との差が、時間加算になります。
+      </div>
+    </div>
+
+    <!-- 待機料（お客様を降ろして待っているあいだの料金） -->
+    <div class="time-box">
+      <div class="time-title">🕒 待機料 <span id="taikiKubun"></span></div>
+      <div class="field">
+        <label>待機時間（分）<span class="hint">／ 「30分くらい待ってて」の30</span></label>
+        <input type="number" id="taikiMin" value="" placeholder="0" min="0" step="1" inputmode="numeric">
+      </div>
+      <div class="time-view">
+        <span>待機料の概算</span><b id="taikiView">0円</b>
+      </div>
+      <div class="time-note">
+        病院・美容室などでお客様を降ろして待つときの料金です。
+        分を入れるとその場で金額が出るので、聞かれたらすぐ答えられます。
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <span class="preset-tag">運賃の単価（今日の日付で自動的に入ります）</span>
+    <!-- メーター代（自動で入りますが、手で直すこともできます） -->
+    <div class="field">
+      <label>初乗り料金（円）<span class="hint">／ 1.75kmまで</span></label>
+      <input type="number" id="hatsune" value="600" min="0" inputmode="numeric">
+    </div>
+    <div class="two">
+      <div class="field">
+        <label>加算距離（m）</label>
+        <input type="number" id="kasanKm" value="400" min="1" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>加算額（円）</label>
+        <input type="number" id="kasanGaku" value="100" min="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- 時間加算の秒数（今日の日付で自動的に 160秒／140秒 が入ります） -->
+    <div class="two">
+      <div class="field">
+        <label>時間加算（秒）<span class="hint">／ 速度10km以下</span></label>
+        <input type="number" id="jikanByo" value="160" min="1" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>加算額（円）</label>
+        <input type="number" id="jikanGaku" value="100" min="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>基本介助料（円）</label>
+      <input type="number" id="kaijo" value="1000" min="0" inputmode="numeric">
+    </div>
+
+    <!-- その他料金（予約料・待機料・車いす貸出など、自由に追加できます） -->
+    <div class="field">
+      <label class="other-title">その他料金 <span class="hint">／ 予約料・待機料・車いす貸出など</span></label>
+
+      <!-- 定型メニュー -->
+      <span class="preset-tag">定型メニュー</span>
+      <div id="presetRows"></div>
+
+      <!-- その他費用（駐車場代・高速代など・金額だけ入れる） -->
+      <div class="manual-label">その他費用 <span>／ 駐車場代・高速代など</span></div>
+      <div class="other-row sonota">
+        <input type="hidden" class="other-name" value="その他費用">
+        <input type="number" class="other-amt" id="sonota" placeholder="0" min="0" inputmode="numeric">
+      </div>
+
+      <!-- 手入力で追加する欄 -->
+      <div class="manual-label">手入力 <span>／ 項目名も自分で書く</span></div>
+      <div id="otherRows"></div>
+      <button type="button" class="addBtn" id="addOther">＋ その他を追加</button>
+    </div>
+
+    <div class="divider"></div>
+    <button id="calcBtn">見積りを計算する</button>
+
+    <!-- 計算結果 -->
+    <div class="result" id="result">
+      <div class="breakdown" id="breakdown"></div>
+      <div class="total">
+        <div class="lbl">概算料金</div>
+        <div class="amt" id="total">0<small>円</small></div>
+      </div>
+      <button type="button" class="pdf-btn" id="pdfBtn">📄 PDF概算見積書を作る</button>
+      <div class="pdf-note">
+        印刷の画面が出ます。iPhoneは「共有」→「プリント」→ 指を広げて<b>PDFとして保存</b>、
+        パソコンは送信先を<b>PDFに保存</b>に変えてください。
+      </div>
+    </div>
+
+    <div class="foot">
+      これは<b>現行運賃</b>の見積りです。表示は<b>概算</b>で、実際の料金はメーターに基づきます。
+    </div>
+
+    <!-- 使い方（押すと開きます） -->
+    <details class="howto" id="howto">
+      <summary>❓ 使い方をひらく</summary>
+      <div class="howto-body">
+
+        <h3>時間加算とは</h3>
+        <p>
+          渋滞で車がゆっくり進んだり、止まっているあいだにかかる料金です。
+          速度が<b>10キロ以下</b>になっているあいだ、決まった時間ごとに100円ずつ足されます。
+        </p>
+        <p>
+          何秒ごとかは、画面の「<b>時間加算（秒）</b>」の枠に出ています。
+          <b>8月23日までは160秒、8月24日からは140秒</b>で、日付がくれば自動で入れ替わります。
+          こうたさんが直す必要はありません。
+        </p>
+
+        <h3>時間加算の入れかた</h3>
+        <ol>
+          <li>「🗺️ マップで距離を調べる」に出発地と目的地を入れてボタンを押す</li>
+          <li>グーグルマップに「<b>6.8 km／19 分</b>」のように距離と時間が出る</li>
+          <li><b>km</b> を「走行距離」の欄に入れる</li>
+          <li><b>分</b> を「時間加算」の所要時間の欄に入れる</li>
+          <li>「空いてるときの目安」との差から、時間加算が自動で出る</li>
+        </ol>
+        <p>
+          マップを開くのは1回だけです。同じ1行から2つの数字を写すだけで済みます。
+        </p>
+
+        <h3>待機料の使いかた</h3>
+        <p>
+          病院や美容室でお客様を降ろして待つときの料金です。
+          「30分くらいで終わるから待ってて」と言われたら、<b>待機時間の欄に30と入れる</b>だけ。
+          その場で金額が出ます。計算ボタンを押す必要はありません。
+        </p>
+        <p>
+          待機料は、時間加算とは<b>別の料金</b>として合計に入ります。
+        </p>
+
+        <h3>バスレーン補正とは</h3>
+        <p>
+          介護タクシーはバスレーンを通れるので、一般の車より渋滞につかまりにくいです。
+          国道58号のようにバスレーンがある道を通るときは<b>チェックを入れてください</b>。
+          時間加算が抑えられて、実際に近い金額になります。
+        </p>
+
+        <h3>その他費用の欄</h3>
+        <p>
+          駐車場代・高速代など、計算では出せない費用を<b>金額だけ</b>入れる欄です。
+          入れた金額はそのまま合計に足され、PDF見積書にも「その他費用」として出ます。
+        </p>
+        <p>
+          予約料など<b>名前を付けたい費用</b>は、下の「手入力」の欄を使ってください。
+        </p>
+
+        <h3>PDF概算見積書の作りかた</h3>
+        <ol>
+          <li>「見積りを計算する」を押す</li>
+          <li>結果の一番下の「📄 PDF概算見積書を作る」を押す</li>
+          <li>見積書が画面いっぱいに出る（このまま相談員に見せてもよい）</li>
+          <li>紙やPDFにするなら「🖨️ 印刷／PDFで保存」を押す
+            <ul>
+              <li>iPhone：共有 → プリント → 指を広げて「PDFとして保存」</li>
+              <li>パソコン：送信先を「PDFに保存」に変える</li>
+            </ul>
+          </li>
+          <li>「✕ 閉じる」で見積もり君にもどる</li>
+        </ol>
+
+        <div class="warn">
+          <b>ご注意</b><br>
+          この画面に出る金額は、すべて<b>概算</b>です。
+          実際の料金はメーター（実際に走った距離と時間）で決まるため、差が出る場合があります。
+          お客様や相談員に伝えるときは、必ず「概算です」と添えてください。
+        </div>
+
+      </div>
+    </details>
+
+    <a class="manual-link" href="https://yoki-caretaxi.netlify.app/manual.pdf" target="_blank" rel="noopener">
+      📖 取扱説明書をひらく
+      <span class="sub">使い方・料金の内訳・注意事項（PDF）</span>
+    </a>
+  </div>
+</div>
+
+<!-- ============================================================
+     PDF概算見積書の紙（ふだんは見えません）
+     「PDF概算見積書を作る」を押したときだけ、印刷の対象になります
+     ============================================================ -->
+<div id="sheet"></div>
+
+<script>
+/* ============================================================
+   運賃表（沖縄県本島地区・福祉輸送事業限定 自動認可運賃）
+   ★このファイルは「現行運賃」と「新運賃」の両方を持ち、
+     日付で自動的に切り替わります。
+     ・2026年8月24日より前 → 現行運賃（初乗り1.75km／時間加算160秒）
+     ・2026年8月24日から   → 新運賃（初乗り1.65km／時間加算140秒）
+   切り替え日を変えたいときは、下の SWITCH_DATE の日付を書きかえます。
+   運賃額を直したいときは、該当する table の数字を書きかえます。
+   時間加算の秒数を直したいときは、jikanSec の数字を書きかえます。
+   ============================================================ */
+const SWITCH_DATE = new Date(2026, 7, 24, 0, 0, 0); // 2026年8月24日 0時（7＝8月）
+
+/* 現行運賃（〜8月23日） */
+const FARE_GENKO = {
+  label: "現行運賃",
+  hatsuneKyori: 1.75,
+  jikanSec: 160,          // 時間加算：速度10km以下 160秒ごとに100円
+  table: {
+    "特定大型": {
+      "上限": { hatsune: 750, kasanM: 284, kasanGaku: 100 },
+      "A":    { hatsune: 740, kasanM: 288, kasanGaku: 100 },
+      "B":    { hatsune: 730, kasanM: 292, kasanGaku: 100 },
+      "下限": { hatsune: 720, kasanM: 296, kasanGaku: 100 }
+    },
+    "大型": {
+      "上限": { hatsune: 650, kasanM: 291, kasanGaku: 100 },
+      "A":    { hatsune: 640, kasanM: 296, kasanGaku: 100 },
+      "下限": { hatsune: 630, kasanM: 300, kasanGaku: 100 }
+    },
+    "普通": {
+      "上限": { hatsune: 600, kasanM: 400, kasanGaku: 100 },
+      "A":    { hatsune: 590, kasanM: 407, kasanGaku: 100 },
+      "下限": { hatsune: 580, kasanM: 414, kasanGaku: 100 }
+    }
+  }
+};
+
+/* 新運賃（2026年8月24日〜） */
+const FARE_SHIN = {
+  label: "新運賃（8月24日改定）",
+  hatsuneKyori: 1.65,
+  jikanSec: 140,          // 時間加算：速度10km以下 140秒ごとに100円
+  table: {
+    "特定大型": {
+      "上限": { hatsune: 810, kasanM: 248, kasanGaku: 100 },
+      "A":    { hatsune: 800, kasanM: 251, kasanGaku: 100 },
+      "B":    { hatsune: 790, kasanM: 254, kasanGaku: 100 },
+      "下限": { hatsune: 780, kasanM: 258, kasanGaku: 100 }
+    },
+    "大型": {
+      "上限": { hatsune: 710, kasanM: 291, kasanGaku: 100 },
+      "A":    { hatsune: 700, kasanM: 295, kasanGaku: 100 },
+      "下限": { hatsune: 690, kasanM: 299, kasanGaku: 100 }
+    },
+    "普通": {
+      "上限": { hatsune: 650, kasanM: 350, kasanGaku: 100 },
+      "A":    { hatsune: 640, kasanM: 355, kasanGaku: 100 },
+      "下限": { hatsune: 630, kasanM: 361, kasanGaku: 100 }
+    }
+  }
+};
+
+/* 今日の日付で、使う運賃を自動でえらぶ */
+const ACTIVE = (new Date() >= SWITCH_DATE) ? FARE_SHIN : FARE_GENKO;
+const HATSUNE_KYORI = ACTIVE.hatsuneKyori; // 初乗り距離（km）
+const JIKAN_SEC     = ACTIVE.jikanSec;     // 時間加算の秒数（160 または 140）
+const fareTable = ACTIVE.table;
+
+/* 時間加算のきまり
+   ・JIKAN_TANKA   … 1回あたりの金額（100円）
+   ・BUS_LANE_RATE … バスレーン補正。介護タクシーはバスレーンを通れるので
+                     渋滞の影響を受けにくい分、加算を減らす割合。
+                     0.7〜0.8 のあいだで調整できます（0.75＝75%に減らす） */
+const JIKAN_TANKA   = 100;
+const BUS_LANE_RATE = 0.75;
+
+/* 空いているときの所要時間を、走行距離から自動で出すための平均速度（km/h）
+   例：時速30kmなら 4.0km ＝ 8分
+   実際より加算が多く出る／少なく出ると感じたら、この数字を上下させます
+   （数字を大きくすると目安の時間が短くなり、時間加算は増えます） */
+const SOKUDO_KIJUN = 30;
+
+/* バッジ・注意書き・タイトルを、今の運賃に合わせて表示 */
+(function(){
+  const b = document.querySelector(".badge");
+  if(b) b.textContent = ACTIVE.label;
+  const f = document.querySelector(".foot");
+  if(f) f.innerHTML = "これは<b>"+ACTIVE.label+"</b>の見積りです。表示は<b>概算</b>で、実際の料金はメーターに基づきます。";
+  document.title = "介護タクシー 見積もり君（"+ACTIVE.label+"）";
+})();
+
+const $ = id => document.getElementById(id);
+
+/* プルダウンを作る */
+function initSelects(){
+  const sharyu = $("sharyu"), kubun = $("kubun");
+  Object.keys(fareTable).forEach(name=>{
+    const o=document.createElement("option");o.value=name;o.textContent=name;sharyu.appendChild(o);
+  });
+  sharyu.value="普通";            // 最初は「普通」
+  buildKubun();
+  kubun.value="上限";             // 最初は「上限」
+  applyFare();
+}
+function buildKubun(){
+  const sharyu=$("sharyu").value, kubun=$("kubun");
+  kubun.innerHTML="";
+  Object.keys(fareTable[sharyu]).forEach(k=>{
+    const o=document.createElement("option");o.value=k;o.textContent=k;kubun.appendChild(o);
+  });
+}
+/* えらんだ区分のメーター代を入力欄に反映 */
+function applyFare(){
+  const f=fareTable[$("sharyu").value][$("kubun").value];
+  $("hatsune").value=f.hatsune;
+  $("kasanKm").value=f.kasanM;
+  $("kasanGaku").value=f.kasanGaku;
+  // 時間加算の秒数は車種・区分で変わらないので、今の運賃セットの値を入れます
+  $("jikanByo").value  = JIKAN_SEC;
+  $("jikanGaku").value = JIKAN_TANKA;
+  if(typeof updateJikanView === "function") updateJikanView();
+}
+
+$("sharyu").addEventListener("change",()=>{buildKubun();$("kubun").selectedIndex=0;applyFare();});
+$("kubun").addEventListener("change",applyFare);
+
+/* ============================================================
+   定型メニュー
+   ・車椅子：種類と金額をプルダウンで選ぶ（種類を選ぶと金額が自動で入る）
+   ・転院・退院サポート：単独。金額プルダウン（500円／1000円・最初は空欄）
+   ・階段介助：単独。段数で変わるので「＋／−」で100円ずつ増減
+   ・付き添い：単独。「＋」1回目で1時間3,000円、2回目からは15分ごとに750円
+   料金や種類を変えたいときは、下の PRESETS などの数字・文言を
+   書きかえるだけで更新できます。
+   ============================================================ */
+const PRESETS = {
+  "スタンダード車椅子": 500,
+  "リクライニング車椅子": 1000,
+  "ストレッチャー": 4000
+};
+const PRESET_AMOUNTS = [500, 1000, 4000];        // 車椅子の金額プルダウン
+const SUPPORT_AMOUNTS = [500, 1000];             // 転院・退院サポートの金額プルダウン
+
+/* 付き添い（1時間3,000円／以降15分ごとに750円）
+   ・TSUKISOI_BASE     … 最初の1時間の金額
+   ・TSUKISOI_STEP     … 15分ごとに足す金額
+   ・TSUKISOI_STEP_MIN … 何分きざみか（分） */
+const TSUKISOI_BASE     = 3000;
+const TSUKISOI_STEP     = 750;
+const TSUKISOI_STEP_MIN = 15;
+
+/* 見出しを1つ追加する */
+function presetLabel(text, sub=""){
+  const d = document.createElement("div");
+  d.className = "preset-label";
+  d.innerHTML = text + (sub ? ` <span>${sub}</span>` : "");
+  $("presetRows").appendChild(d);
+}
+
+/* 車椅子（種類プルダウン＋金額プルダウン） */
+function buildWheelchairRow(){
+  presetLabel("車椅子");
+  const row = document.createElement("div");
+  row.className = "other-row preset-row";
+  const nameOpts = ['<option value="">選択してください</option>']
+    .concat(Object.keys(PRESETS).map(n=>`<option value="${n}">${n}</option>`)).join("");
+  const amtOpts = ['<option value="">－</option>']
+    .concat(PRESET_AMOUNTS.map(a=>`<option value="${a}">${a.toLocaleString("ja-JP")}円</option>`)).join("");
+  row.innerHTML =
+    `<select class="other-name">${nameOpts}</select>
+     <select class="other-amt">${amtOpts}</select>
+     <div class="preset-spacer"></div>`;
+  const nameSel = row.querySelector(".other-name");
+  const amtSel  = row.querySelector(".other-amt");
+  nameSel.addEventListener("change", ()=>{
+    if(nameSel.value === ""){ amtSel.value = ""; }
+    else if(PRESETS[nameSel.value] !== undefined){ amtSel.value = String(PRESETS[nameSel.value]); }
+    setTimeout(postHeight, 50);
+  });
+  amtSel.addEventListener("change", ()=>setTimeout(postHeight, 50));
+  $("presetRows").appendChild(row);
+}
+
+/* 転院・退院サポート（単独・金額プルダウン・最初は空欄） */
+function buildSupportRow(){
+  presetLabel("転院・退院サポート");
+  const row = document.createElement("div");
+  row.className = "other-row preset-row single";
+  const amtOpts = ['<option value="">選択してください（－）</option>']
+    .concat(SUPPORT_AMOUNTS.map(a=>`<option value="${a}">${a.toLocaleString("ja-JP")}円</option>`)).join("");
+  row.innerHTML =
+    `<input type="hidden" class="other-name" value="転院・退院サポート">
+     <select class="other-amt">${amtOpts}</select>`;
+  row.querySelector(".other-amt").addEventListener("change", ()=>setTimeout(postHeight, 50));
+  $("presetRows").appendChild(row);
+}
+
+/* 階段介助（単独・100円ずつ増減） */
+function buildStairRow(){
+  presetLabel("階段介助", "1段100円・段数で変わります");
+  const row = document.createElement("div");
+  row.className = "other-row preset-row stair";
+  row.innerHTML =
+    `<input type="hidden" class="other-name" value="階段介助">
+     <div class="stepper">
+       <button type="button" class="step-btn step-minus" aria-label="100円下げる">−</button>
+       <input type="text" class="other-amt" value="0円" readonly inputmode="none">
+       <button type="button" class="step-btn step-plus" aria-label="100円上げる">＋</button>
+     </div>`;
+  const amt = row.querySelector(".other-amt");
+  const setAmt = n => { amt.value = Math.max(0, n) + "円"; };
+  row.querySelector(".step-minus").addEventListener("click", ()=>{ setAmt((parseInt(amt.value)||0)-100); setTimeout(postHeight,50); });
+  row.querySelector(".step-plus").addEventListener("click",  ()=>{ setAmt((parseInt(amt.value)||0)+100); setTimeout(postHeight,50); });
+  $("presetRows").appendChild(row);
+}
+
+/* 付き添い（単独・「＋」1回で15分ずつ増える）
+   ・「＋」1回目 …… 1時間 3,000円（最低料金）
+   ・2回目から …… 15分ごとに 750円ずつ加算
+   ・「−」で戻り、0（なし）より下にはなりません                */
+function buildTsukisoiRow(){
+  presetLabel("付き添い", `1時間${TSUKISOI_BASE.toLocaleString("ja-JP")}円・以降${TSUKISOI_STEP_MIN}分ごと${TSUKISOI_STEP.toLocaleString("ja-JP")}円`);
+  const row = document.createElement("div");
+  row.className = "other-row preset-row tsukisoi";
+  row.innerHTML =
+    `<input type="hidden" class="other-name" value="">
+     <div class="stepper">
+       <button type="button" class="step-btn step-minus" aria-label="15分減らす">−</button>
+       <input type="text" class="tsukisoi-view" value="なし（0円）" readonly inputmode="none">
+       <input type="hidden" class="other-amt" value="0">
+       <button type="button" class="step-btn step-plus" aria-label="15分増やす">＋</button>
+     </div>`;
+  const view = row.querySelector(".tsukisoi-view");
+  const amt  = row.querySelector(".other-amt");
+  const name = row.querySelector(".other-name");
+  let step = 0;                       // 0＝なし、1＝1時間、2＝1時間15分 …
+
+  /* 分を「◯時間◯分」の文字にする */
+  const jikanText = min => {
+    const h = Math.floor(min / 60), m = min % 60;
+    return (h ? h + "時間" : "") + (m ? m + "分" : (h ? "" : "0分"));
+  };
+
+  const render = () => {
+    if(step <= 0){
+      step = 0;
+      name.value = "";                // 未選択あつかい → 計算に入りません
+      amt.value  = "0";
+      view.value = "なし（0円）";
+    }else{
+      const min   = 60 + (step - 1) * TSUKISOI_STEP_MIN;
+      const kingaku = TSUKISOI_BASE + (step - 1) * TSUKISOI_STEP;
+      name.value = "付き添い（" + jikanText(min) + "）";
+      amt.value  = String(kingaku);
+      view.value = jikanText(min) + "　" + kingaku.toLocaleString("ja-JP") + "円";
+    }
+  };
+
+  row.querySelector(".step-minus").addEventListener("click", ()=>{ step--; render(); setTimeout(postHeight,50); });
+  row.querySelector(".step-plus").addEventListener("click",  ()=>{ step++; render(); setTimeout(postHeight,50); });
+  render();
+  $("presetRows").appendChild(row);
+}
+
+/* ============================================================
+   その他料金の行（予約料・待機料などを自由に追加）
+   ============================================================ */
+function makeOtherRow(name="", amount=""){
+  const row = document.createElement("div");
+  row.className = "other-row";
+  row.innerHTML =
+    `<input type="text" class="other-name" placeholder="項目名（例：予約料）" value="${name}">
+     <input type="number" class="other-amt" placeholder="0" min="0" inputmode="numeric" value="${amount}">
+     <button type="button" class="del-other" aria-label="この行を削除">×</button>`;
+  row.querySelector(".del-other").addEventListener("click", ()=>row.remove());
+  $("otherRows").appendChild(row);
+}
+$("addOther").addEventListener("click", ()=>makeOtherRow());
+
+/* ============================================================
+   グーグルマップで距離を調べる（無料・APIキー不要）
+   出発地・目的地を入れてボタンを押すと、経路を表示した
+   グーグルマップが別の画面で開きます。そこに出た距離（km）を
+   「走行距離」に手で入力してください。
+   ============================================================ */
+$("mapBtn").addEventListener("click", ()=>{
+  const from = $("mapFrom").value.trim();
+  const to   = $("mapTo").value.trim();
+  const warn = $("mapWarn");
+  if(!from && !to){
+    warn.style.display = "block";
+    setTimeout(postHeight, 50);
+    return;
+  }
+  warn.style.display = "none";
+  let url = "https://www.google.com/maps/dir/?api=1&travelmode=driving";
+  if(from) url += "&origin=" + encodeURIComponent(from);
+  if(to)   url += "&destination=" + encodeURIComponent(to);
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+/* ============================================================
+   時間加算と待機料
+   どちらも「時間加算（秒）」と「加算額（円）」の枠の数字を使います。
+   その枠には、今日の日付で 160秒／140秒 が自動で入っています。
+   ・時間加算 … （マップの所要時間 － 空いてるときの目安）の秒数 ÷ 秒 × 加算額
+   ・待機料   … 待機時間の秒数 ÷ 秒 × 加算額
+   どちらも100円未満（1回に満たない分）は切り捨てです。
+   ============================================================ */
+/* 枠に入っている秒数・加算額を読む */
+function getByo(){  return Math.max(1, parseInt($("jikanByo").value)||JIKAN_SEC); }
+function getGaku(){ return Math.max(0, parseInt($("jikanGaku").value)||JIKAN_TANKA); }
+
+function calcJikan(){
+  const km   = Math.max(0, parseFloat($("km").value)||0);
+  const jam  = Math.max(0, parseFloat($("jamMin").value)||0);   // マップに出た所要時間（分）
+  const bus  = $("busLane").checked;
+
+  if(km <= 0 || jam <= 0){
+    return { ok:false, normMin:0, saMin:0, kaisu:0, kingaku:0, bus };
+  }
+
+  const normMin = km / SOKUDO_KIJUN * 60;        // 空いてるときの目安（分）
+  const saMin   = Math.max(0, jam - normMin);    // 差（分）
+  let   sec     = saMin * 60;                    // 差（秒）
+  if(bus) sec = sec * BUS_LANE_RATE;             // バスレーン補正
+
+  const kaisu   = Math.floor(sec / getByo());    // 加算の回数（切り捨て）
+  const kingaku = kaisu * getGaku();             // 時間加算の金額
+
+  return { ok:true, normMin, saMin, kaisu, kingaku, bus };
+}
+
+/* 待機料（お客様を降ろして待つあいだ） */
+function calcTaiki(){
+  const min = Math.max(0, parseFloat($("taikiMin").value)||0);
+  const sec = min * 60;
+  const kaisu   = Math.floor(sec / getByo());
+  const kingaku = kaisu * getGaku();
+  return { min, kaisu, kingaku };
+}
+
+/* 入力するたびに、目安の時間・時間加算・待機料を出しなおす */
+function updateJikanView(){
+  const byo = getByo(), gaku = getGaku();
+  const kubunText = "／ 速度10km以下 " + byo + "秒ごとに" + gaku + "円";
+  $("jikanKubun").textContent = kubunText;
+  $("taikiKubun").textContent = "／ " + byo + "秒ごとに" + gaku + "円";
+
+  const j = calcJikan();
+  if(!j.ok){
+    $("normView").textContent  = "－";
+    $("jikanView").textContent = "0円";
+  }else{
+    $("normView").textContent  = "約" + Math.round(j.normMin) + "分（差 " + Math.round(j.saMin) + "分）";
+    $("jikanView").textContent = j.kingaku.toLocaleString("ja-JP") + "円";
+  }
+
+  const t = calcTaiki();
+  $("taikiView").textContent = t.kingaku.toLocaleString("ja-JP") + "円";
+}
+["km","jamMin","busLane","taikiMin","jikanByo","jikanGaku"].forEach(id=>{
+  const el = $(id);
+  if(el){
+    el.addEventListener("input",  updateJikanView);
+    el.addEventListener("change", updateJikanView);
+  }
+});
+updateJikanView();
+
+/* ============================================================
+   計算
+   概算料金 = 距離運賃（初乗り + 加算）+ 基本介助料 + 時間加算 + その他料金
+   ・1.75kmまでは初乗り料金
+   ・それを超えた分は「加算距離ごとに加算額」を加える
+   ============================================================ */
+/* 計算結果をとっておく箱（PDF見積書で使います） */
+let EST = null;
+
+function calc(){
+  const km      = Math.max(0, parseFloat($("km").value)||0);
+  const hatsune = Math.max(0, parseInt($("hatsune").value)||0);
+  const kasanM  = Math.max(1, parseInt($("kasanKm").value)||1);
+  const kasanG  = Math.max(0, parseInt($("kasanGaku").value)||0);
+  const kaijo   = Math.max(0, parseInt($("kaijo").value)||0);
+
+  let kasanKaisu = 0, kasanKingaku = 0;
+  if(km > HATSUNE_KYORI){
+    const extraM = (km - HATSUNE_KYORI) * 1000;      // 超えた距離（m）
+    kasanKaisu = Math.ceil(extraM / kasanM);          // 加算の回数
+    kasanKingaku = kasanKaisu * kasanG;               // 加算の合計金額
+  }
+
+  // その他料金を集める
+  let otherTotal = 0;
+  const otherItems = [];
+  document.querySelectorAll(".other-row").forEach(r=>{
+    const nm  = r.querySelector(".other-name").value.trim();
+    const amt = Math.max(0, parseInt(r.querySelector(".other-amt").value)||0);
+    // 定型（プルダウン）の行で項目が未選択なら数えない
+    if(r.classList.contains("preset-row") && nm === "") return;
+    if(amt > 0){ otherTotal += amt; otherItems.push({nm: nm || "その他", amt}); }
+  });
+
+  const jikan = calcJikan();                               // 時間加算
+  const taiki = calcTaiki();                               // 待機料
+
+  const kyoriUnchin = hatsune + kasanKingaku;              // 距離運賃
+  const total = kyoriUnchin + kaijo + jikan.kingaku + taiki.kingaku + otherTotal;   // 概算料金
+
+  const y = n => n.toLocaleString("ja-JP");
+  let html = `<div class="row"><span>初乗り料金（〜${HATSUNE_KYORI}km）</span><span>${y(hatsune)}円</span></div>`;
+  if(kasanKaisu>0){
+    html += `<div class="row"><span>距離加算（${kasanM}m×${kasanKaisu}回）</span><span>${y(kasanKingaku)}円</span></div>`;
+  }
+  html += `<div class="row"><span>基本介助料</span><span>${y(kaijo)}円</span></div>`;
+  if(jikan.kingaku>0){
+    const busText = jikan.bus ? "・バスレーン補正あり" : "";
+    html += `<div class="row"><span>時間加算（渋滞${Math.round(jikan.saMin)}分・${getByo()}秒ごと${getGaku()}円${busText}）</span><span>${y(jikan.kingaku)}円</span></div>`;
+  }
+  if(taiki.kingaku>0){
+    html += `<div class="row"><span>待機料（${Math.round(taiki.min)}分・${getByo()}秒ごと${getGaku()}円）</span><span>${y(taiki.kingaku)}円</span></div>`;
+  }
+  otherItems.forEach(it=>{
+    html += `<div class="row"><span>${it.nm}</span><span>${y(it.amt)}円</span></div>`;
+  });
+
+  $("breakdown").innerHTML = html;
+  $("total").innerHTML = `${y(total)}<small>円</small>`;
+  $("result").classList.add("show");
+
+  // PDF見積書で使うために、計算結果をとっておきます
+  EST = { km, hatsune, kasanM, kasanKaisu, kasanKingaku, kyoriUnchin,
+          kaijo, jikan, taiki, otherItems, total };
+}
+$("calcBtn").addEventListener("click",calc);
+
+/* ============================================================
+   PDF概算見積書
+   ・追加のソフトは使いません。ブラウザの印刷機能でPDFにします
+   ・押すと計算をやり直してから、見積書の紙を組み立てて印刷画面を出します
+   ・会社の住所・電話は入れません（依頼どおり）
+   ============================================================ */
+$("pdfBtn").addEventListener("click", ()=>{
+  calc();                       // 最新の数字で作り直します
+  if(!EST) return;
+
+  const y = n => n.toLocaleString("ja-JP") + "円";
+  const d = new Date();
+  const hakkoubi = d.getFullYear() + "年" + (d.getMonth()+1) + "月" + d.getDate() + "日";
+  const from = $("mapFrom").value.trim();
+  const to   = $("mapTo").value.trim();
+
+  let rows = "";
+  if(from) rows += `<tr><th>出発地</th><td>${from}</td></tr>`;
+  if(to)   rows += `<tr><th>到着地</th><td>${to}</td></tr>`;
+  rows += `<tr><th>走行距離</th><td class="num">${EST.km} km</td></tr>`;
+  rows += `<tr><th>距離料金</th><td class="num">${y(EST.kyoriUnchin)}</td></tr>`;
+  rows += `<tr><th>基本介助料</th><td class="num">${y(EST.kaijo)}</td></tr>`;
+  if(EST.jikan.kingaku > 0){
+    rows += `<tr><th>時間加算</th><td class="num">${y(EST.jikan.kingaku)}</td></tr>`;
+  }
+  if(EST.taiki.kingaku > 0){
+    rows += `<tr><th>待機料（${Math.round(EST.taiki.min)}分）</th><td class="num">${y(EST.taiki.kingaku)}</td></tr>`;
+  }
+  EST.otherItems.forEach(it=>{
+    rows += `<tr><th>${it.nm}</th><td class="num">${y(it.amt)}</td></tr>`;
+  });
+  rows += `<tr class="s-total"><th>合計金額</th><td class="num">${y(EST.total)}</td></tr>`;
+
+  $("sheet").innerHTML =
+    `<div class="sheet-bar">
+       <button type="button" id="printBtn">🖨️ 印刷／PDFで保存</button>
+       <button type="button" class="close-btn" id="closeSheet">✕ 閉じる</button>
+     </div>
+     <div class="s-wrap">
+       <h2>概算見積もり</h2>
+       <div class="s-date">発行日　${hakkoubi}</div>
+       <table>${rows}</table>
+       <div class="s-note">
+         本見積もりは概算です。実際のメーター料金とは差が出る場合があります。
+       </div>
+     </div>`;
+
+  $("sheet").classList.add("show");     // 見積書を画面いっぱいに出します
+  $("sheet").scrollTop = 0;
+
+  // 「印刷／PDFで保存」…… 印刷の画面を出します
+  $("printBtn").addEventListener("click", ()=>window.print());
+  // 「閉じる」…… 見積もり君の画面にもどります
+  $("closeSheet").addEventListener("click", ()=>$("sheet").classList.remove("show"));
+});
+
+initSelects();
+buildWheelchairRow();   // 車椅子（種類＋金額プルダウン）
+buildSupportRow();      // 転院・退院サポート（単独・金額プルダウン）
+buildStairRow();        // 階段介助（単独・100円ずつ増減）
+buildTsukisoiRow();     // 付き添い（1時間3,000円・以降15分ごと750円）
+makeOtherRow();   // 手入力の欄をひとつ表示
+
+/* ============================================================
+   ホームページに埋め込まれたとき、中身の高さを親ページに伝えて
+   iframe の高さをぴったり合わせる（単独で開いたときは無害）
+   ============================================================ */
+function postHeight(){
+  try{ parent.postMessage({type:"estHeight", height:document.body.scrollHeight}, "*"); }catch(e){}
+}
+window.addEventListener("load", postHeight);
+window.addEventListener("resize", postHeight);
+["calcBtn","addOther"].forEach(id=>{ const el=$(id); if(el) el.addEventListener("click", ()=>setTimeout(postHeight,50)); });
+document.addEventListener("click", e=>{ if(e.target.classList.contains("del-other")) setTimeout(postHeight,50); });
+$("sharyu").addEventListener("change", ()=>setTimeout(postHeight,50));
+$("howto").addEventListener("toggle", ()=>setTimeout(postHeight,50));
+setInterval(postHeight, 1000);   // 念のため定期的にも調整
+</script>
+</body>
+</html>
