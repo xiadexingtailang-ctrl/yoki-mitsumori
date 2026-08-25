@@ -198,6 +198,13 @@
   .other-row.sunday .check{margin-bottom:0;}
   .other-row.sunday .check span b{color:var(--orange);font-weight:700;}
 
+  /* 障害者割引（メーター運賃の1割引き） */
+  .waribiki-box{margin-bottom:14px;}
+  .waribiki-box .check{margin-bottom:6px;}
+  .waribiki-box .check span b{color:var(--orange);font-weight:700;}
+  .waribiki-note{font-size:12px;color:var(--ink-soft);line-height:1.6;padding:0 3px;}
+  .result .breakdown .row.waribiki-row span:last-child{color:var(--teal-dark);}
+
   /* 「手入力」「その他費用」の見出し */
   .manual-label{font-size:17px;font-weight:700;color:var(--orange);margin:18px 0 7px;}
   .manual-label span{font-weight:400;font-size:11px;color:var(--ink-soft);}
@@ -489,6 +496,18 @@
     </div>
 
     <div class="divider"></div>
+
+    <!-- 障害者割引（メーター運賃の1割引き） -->
+    <div class="waribiki-box">
+      <label class="check" for="waribikiChk">
+        <input type="checkbox" id="waribikiChk">
+        <span>障害者割引（メーター運賃の<b>1割引き</b>）</span>
+      </label>
+      <div class="waribiki-note">
+        距離運賃・時間加算・待機料が割引きの対象です。基本介助料とその他料金は割引きされません。
+      </div>
+    </div>
+
     <button id="calcBtn">見積りを計算する</button>
 
     <!-- 計算結果 -->
@@ -548,6 +567,18 @@
         <ol class="howto-num"><li><span class="n">1</span><b>車椅子</b>…… 種類をえらぶと金額が自動で入ります（スタンダード500円／リクライニング1,000円／ストレッチャー4,000円）</li><li><span class="n">2</span><b>転院・退院サポート</b>…… 500円か1,000円をえらぶ。使わないときは空欄のまま</li><li><span class="n">3</span><b>階段介助</b>…… 1段100円。＋と−で100円ずつ増やしたり減らしたり</li><li><span class="n">4</span><b>付き添い</b>…… ＋の1回目で1時間3,000円。2回目からは15分ごとに750円ずつ増えます</li><li><span class="n">5</span><b>日曜日・祝日</b>…… 四角い枠を押してチェックを入れると1,000円</li><li><span class="n">6</span><b>その他費用</b>…… 駐車場代・高速代など、<b>金額だけ</b>入れる欄</li><li><span class="n">7</span><b>手入力</b>…… 予約料など、項目名も自分で書きたいときの欄。「＋その他を追加」で何行でも増やせます</li></ol>
         <div class="howto-tip">
           えらんでいない欄、0円の欄は<b>合計に入りません</b>。使わない欄はさわらなくて大丈夫です。
+        </div>
+
+        <h3>障害者割引（写真④と⑤のあいだの欄）</h3>
+        <ol class="howto-num">
+          <li><span class="n">1</span><b>「見積りを計算する」ボタンのすぐ上</b>に、障害者割引のチェック欄があります</li>
+          <li><span class="n">2</span>対象のお客様のときだけ、四角い枠を押して<b>チェックを入れる</b></li>
+          <li><span class="n">3</span>そのまま計算すると、内訳の一番下に<b>「障害者割引　－220円」</b>のように出ます</li>
+        </ol>
+        <div class="howto-tip">
+          割引になるのは<b>メーターに出る運賃だけ</b>です（初乗り運賃・距離加算・時間加算・待機料）。<br>
+          <b>基本介助料・車椅子・階段介助・付き添い・日曜日祝日・その他費用は、割引きされません。</b><br>
+          割引額の10円未満は切り上げます（例：255円 → 260円）。PDF見積書にも同じ行が出ます。
         </div>
 
         <h3>写真⑤　計算して見積書を出す</h3>
@@ -727,6 +758,7 @@ const PRESETS = {
 };
 const PRESET_AMOUNTS = [500, 1000, 4000];        // 車椅子の金額プルダウン
 const SUPPORT_AMOUNTS = [500, 1000];             // 転院・退院サポートの金額プルダウン
+const KAIDAN_TANKA    = 100;                     // 階段介助 1段あたりの金額
 
 /* 付き添い（1時間3,000円／以降15分ごとに750円）
    ・TSUKISOI_BASE     … 最初の1時間の金額
@@ -739,6 +771,15 @@ const TSUKISOI_STEP_MIN = 15;
 /* 日曜日・祝日の割増（チェックを入れたときだけ足す固定料金）
    金額を変えたいときは、この数字だけ書きかえます */
 const NICHIYOU_SHUKUJITSU = 1000;
+
+/* ============================================================
+   障害者割引
+   ・タクシーメーターに出る運賃（距離運賃＋時間加算＋待機料）の1割引き
+   ・基本介助料と、その他料金（車椅子・階段介助など）は割引きの対象外
+   ・割引額の10円未満は切り上げ（お客様に有利なほう）
+   率を変えたいときは、下の数字を書きかえます（0.1 ＝ 1割）
+   ============================================================ */
+const SHOGAISHA_WARIBIKI = 0.1;
 
 /* 見出しを1つ追加する */
 function presetLabel(text, sub=""){
@@ -788,7 +829,7 @@ function buildSupportRow(){
 
 /* 階段介助（単独・100円ずつ増減） */
 function buildStairRow(){
-  presetLabel("階段介助", "1段100円・段数で変わります");
+  presetLabel("階段介助", `1段${KAIDAN_TANKA.toLocaleString("ja-JP")}円・段数で変わります`);
   const row = document.createElement("div");
   row.className = "other-row preset-row stair";
   row.innerHTML =
@@ -800,8 +841,8 @@ function buildStairRow(){
      </div>`;
   const amt = row.querySelector(".other-amt");
   const setAmt = n => { amt.value = Math.max(0, n) + "円"; };
-  row.querySelector(".step-minus").addEventListener("click", ()=>{ setAmt((parseInt(amt.value)||0)-100); setTimeout(postHeight,50); });
-  row.querySelector(".step-plus").addEventListener("click",  ()=>{ setAmt((parseInt(amt.value)||0)+100); setTimeout(postHeight,50); });
+  row.querySelector(".step-minus").addEventListener("click", ()=>{ setAmt((parseInt(amt.value)||0)-KAIDAN_TANKA); setTimeout(postHeight,50); });
+  row.querySelector(".step-plus").addEventListener("click",  ()=>{ setAmt((parseInt(amt.value)||0)+KAIDAN_TANKA); setTimeout(postHeight,50); });
   $("presetRows").appendChild(row);
 }
 
@@ -1031,7 +1072,13 @@ function calc(){
   const taiki = calcTaiki();                               // 待機料
 
   const kyoriUnchin = hatsune + kasanKingaku;              // 距離運賃
-  const total = kyoriUnchin + kaijo + jikan.kingaku + taiki.kingaku + otherTotal;   // 概算料金
+
+  // 障害者割引：メーターに出る運賃（距離運賃＋時間加算＋待機料）の1割引き
+  const meter    = kyoriUnchin + jikan.kingaku + taiki.kingaku;
+  const wChk     = $("waribikiChk");
+  const waribiki = (wChk && wChk.checked) ? Math.ceil(meter * SHOGAISHA_WARIBIKI / 10) * 10 : 0;
+
+  const total = kyoriUnchin + kaijo + jikan.kingaku + taiki.kingaku + otherTotal - waribiki;   // 概算料金
 
   const y = n => n.toLocaleString("ja-JP");
   let html = `<div class="row"><span>初乗り料金（〜${HATSUNE_KYORI}km）</span><span>${y(hatsune)}円</span></div>`;
@@ -1049,6 +1096,9 @@ function calc(){
   otherItems.forEach(it=>{
     html += `<div class="row"><span>${it.nm}</span><span>${y(it.amt)}円</span></div>`;
   });
+  if(waribiki > 0){
+    html += `<div class="row waribiki-row"><span>障害者割引（メーター運賃の1割引き）</span><span>－${y(waribiki)}円</span></div>`;
+  }
 
   $("breakdown").innerHTML = html;
   $("total").innerHTML = `${y(total)}<small>円</small>`;
@@ -1056,7 +1106,7 @@ function calc(){
 
   // PDF見積書で使うために、計算結果をとっておきます
   EST = { km, hatsune, kasanM, kasanKaisu, kasanKingaku, kyoriUnchin,
-          kaijo, jikan, taiki, otherItems, total };
+          kaijo, jikan, taiki, otherItems, meter, waribiki, total };
 }
 $("calcBtn").addEventListener("click",calc);
 
@@ -1091,6 +1141,9 @@ $("pdfBtn").addEventListener("click", ()=>{
   EST.otherItems.forEach(it=>{
     rows += `<tr><th>${it.nm}</th><td class="num">${y(it.amt)}</td></tr>`;
   });
+  if(EST.waribiki > 0){
+    rows += `<tr><th>障害者割引（メーター運賃の1割引き）</th><td class="num">－${y(EST.waribiki)}</td></tr>`;
+  }
   rows += `<tr class="s-total"><th>合計金額</th><td class="num">${y(EST.total)}</td></tr>`;
 
   $("sheet").innerHTML =
@@ -1138,6 +1191,42 @@ document.addEventListener("click", e=>{ if(e.target.classList.contains("del-othe
 $("sharyu").addEventListener("change", ()=>setTimeout(postHeight,50));
 $("howto").addEventListener("toggle", ()=>setTimeout(postHeight,50));
 setInterval(postHeight, 1000);   // 念のため定期的にも調整
+
+/* ============================================================
+   料金の数字を、ホームページ（この画面を埋め込んでいる親）へ送る
+   ・ホームページの「ご利用料金」の表と「入力の目安」が、これで自動的に
+     この見積もり君と同じ数字になります。
+   ・送るのは、いつも「普通車・上限」の運賃です（ホームページの表がそれのため）。
+     画面で車種をえらび直しても、ホームページの表は変わりません。
+   ・この見積もり君を直せば、ホームページも自動で新しくなります。
+     ホームページ側で数字を書きかえる必要はありません。
+   ============================================================ */
+function postFare(){
+  try{
+    const f   = ACTIVE.table["普通"]["上限"];
+    const sec = ACTIVE.jikanSec;
+    const mm  = Math.floor(sec / 60), ss = sec % 60;
+    const wari = SHOGAISHA_WARIBIKI * 10;
+    const y = n => n.toLocaleString("ja-JP");
+    parent.postMessage({
+      type:       "estFare",
+      label:      ACTIVE.label,
+      hatsuneKm:  String(ACTIVE.hatsuneKyori),
+      hatsune:    y(f.hatsune),
+      kasanM:     y(f.kasanM),
+      kasanGaku:  y(f.kasanGaku),
+      jikan:      mm + "分" + (ss ? ss + "秒" : ""),
+      jikanGaku:  y(f.kasanGaku),
+      kaijo:      y(parseInt(document.getElementById("kaijo").value) || 1000),
+      waribiki:   (Number.isInteger(wari) ? wari : wari.toFixed(1)) + "割引き",
+      isu1:       y(PRESET_AMOUNTS[0]),
+      isu2:       y(PRESET_AMOUNTS[1]),
+      stretcher:  y(PRESET_AMOUNTS[2]),
+      kaidan:     y(KAIDAN_TANKA)
+    }, "*");
+  }catch(e){}
+}
+window.addEventListener("load", postFare);
 </script>
 </body>
 </html>
