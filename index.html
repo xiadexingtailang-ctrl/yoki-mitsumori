@@ -121,6 +121,7 @@
     background:#fff;font-size:22px;font-weight:700;border:1.5px solid var(--line);
   }
   .time-box .field.big input::placeholder{color:#a8bab6;font-weight:700;}
+  #km::placeholder{color:#a8bab6;font-weight:700;}   /* 走行距離も所要時間と同じ薄い0（入っていない印） */
   /* バスレーン補正のチェックボックス（押すとオン・オフが切り替わる四角い印） */
   .check{
     display:flex;align-items:flex-start;gap:9px;
@@ -411,7 +412,7 @@
     <!-- 走行距離 -->
     <div class="highlight">
       <label>走行距離（km）<span class="hint">／ マップで調べた距離を入力</span></label>
-      <input type="number" id="km" value="0" min="0" step="0.1" inputmode="decimal">
+      <input type="number" id="km" value="" placeholder="0" min="0" step="0.1" inputmode="decimal">
     </div>
 
     <!-- 時間加算（渋滞でゆっくり走る・止まっている分の料金） -->
@@ -1260,8 +1261,9 @@ window.addEventListener("load", postFare);
 
 /* ============================================================
    早見表に登録（陽気だけ）
-   ・料金早見表くん（GAS）の受け皿へ、タクシーメーターの分（初乗り＋距離加算）だけを送る。
-     基本介助料・時間加算・その他料金は送らない。
+   ・料金早見表くん（GAS）の受け皿へ、タクシーメーターの分（初乗り＋距離加算）と時間加算の目安を送る。
+     時間加算は「所要時間（分）」を入れたときだけ入る（入れなければ 0円）。
+     基本介助料・待機料・その他料金は送らない。
    ・いっしょに「そのほかの料金」の定数も送る。パンフレットの下の表は、いつもこの見積もり君の数字になる。
    ・合言葉を知っている端末でしか出ない。アドレスの最後に ?hk=合言葉 を付けて開く。
      アドレスに合言葉は残す（そのアドレスを「ホーム画面に追加」すれば、アイコンから開くたびに枠が出る）。
@@ -1284,7 +1286,10 @@ const HAYAMI_KEY = hayamiKey();
 
 function hayamiKin(){
   if(!EST){ $("hkKin").textContent = "先に「見積りを計算する」を押してください。"; return; }
-  $("hkKin").innerHTML = `登録する金額：<b>約${EST.kyoriUnchin.toLocaleString("ja-JP")}円</b>（${EST.km}km・メーターの分だけ／${$("sharyu").value}・${$("kubun").value}）`;
+  const jk = EST.jikan.kingaku || 0;
+  const jkText = jk > 0 ? `距離の運賃 ${EST.kyoriUnchin.toLocaleString("ja-JP")}円＋時間加算 ${jk.toLocaleString("ja-JP")}円`
+    : (EST.jikan.ok ? "時間加算なし" : "所要時間が空なので時間加算なし");
+  $("hkKin").innerHTML = `登録する金額：<b>約${(EST.kyoriUnchin + jk).toLocaleString("ja-JP")}円</b>（${EST.km}km・${jkText}／${$("sharyu").value}・${$("kubun").value}）`;
 }
 
 function hayamiSetup(){
@@ -1347,6 +1352,7 @@ function hayamiSend(){
   const data = {
     key: HAYAMI_KEY, from, to, fromMejirushi: $("hkFromM").value, toMejirushi: $("hkToM").value,
     meter: EST.kyoriUnchin, km: EST.km, sharyu: $("sharyu").value, kubun: $("kubun").value,
+    jikan: EST.jikan.kingaku || 0, fun: parseFloat($("jamMin").value) || 0, bus: EST.jikan.bus,
     ryokin: {
       kaijo: parseInt($("kaijo").defaultValue) || 0,
       support: SUPPORT_AMOUNTS, isu: PRESETS, kaidan: KAIDAN_TANKA,
