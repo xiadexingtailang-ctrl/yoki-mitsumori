@@ -1263,24 +1263,22 @@ window.addEventListener("load", postFare);
    ・料金早見表くん（GAS）の受け皿へ、タクシーメーターの分（初乗り＋距離加算）だけを送る。
      基本介助料・時間加算・その他料金は送らない。
    ・いっしょに「そのほかの料金」の定数も送る。パンフレットの下の表は、いつもこの見積もり君の数字になる。
-   ・合言葉を覚えた端末でしか出ない。最初に1回だけ、アドレスの最後に ?hk=合言葉 を付けて開く。
-     合言葉はこの端末に覚えさせて、アドレスからはすぐ消す。
+   ・合言葉を知っている端末でしか出ない。アドレスの最後に ?hk=合言葉 を付けて開く。
+     アドレスに合言葉は残す（そのアドレスを「ホーム画面に追加」すれば、アイコンから開くたびに枠が出る）。
+     ふつうのアドレスで開いたときのために、端末にも覚えさせておく。
    ・合言葉が合わなければ受け皿が断るので、ボタンを見られても登録はできない。
    ============================================================ */
 const HAYAMI_URL = "https://script.google.com/macros/s/AKfycbz9oClAIDLSPUZtyq0On_mYbIa6-OG-9S_yuOzhpUdIdZY7tDhyWQfEGFTEotW2h7HK6A/exec";   // 料金早見表くんのウェブアプリのアドレス（/exec で終わるもの）。空のあいだはボタンが出ない
 const HAYAMI_MEJIRUSHI = ["病院","透析","施設","地域","その他"];
 
 function hayamiKey(){
+  let k = "";
+  try{ k = new URLSearchParams(location.search).get("hk") || ""; }catch(e){}
   try{
-    const q = new URLSearchParams(location.search);
-    const k = q.get("hk");
-    if(k){
-      localStorage.setItem("yk_hayami_key", k);
-      q.delete("hk");
-      try{ history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }catch(e){}
-    }
-    return localStorage.getItem("yk_hayami_key") || "";
-  }catch(e){ return ""; }
+    if(k) localStorage.setItem("yk_hayami_key", k);
+    else  k = localStorage.getItem("yk_hayami_key") || "";
+  }catch(e){}   // 覚えられない端末（プライベートブラウズなど）でも、アドレスの合言葉で動く
+  return k;
 }
 const HAYAMI_KEY = hayamiKey();
 
