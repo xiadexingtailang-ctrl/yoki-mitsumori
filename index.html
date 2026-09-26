@@ -315,6 +315,21 @@
   .pdf-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
   .pdf-note b{color:var(--orange);}
 
+  /* 早見表に登録（陽気だけ。合言葉を覚えた端末にしか出ない） */
+  .hayami-box{margin-top:18px;border:2px dashed var(--teal);border-radius:12px;padding:12px 13px;background:var(--field);}
+  .hayami-box .ttl{font-weight:700;color:var(--teal-dark);font-size:14px;}
+  .hayami-box label{display:block;font-size:12px;color:var(--ink-soft);margin-top:8px;}
+  .hayami-box .two{display:flex;gap:6px;}
+  .hayami-box .two input{flex:1;min-width:0;}
+  .hayami-box .two select{width:92px;}
+  .hayami-box input,.hayami-box select{font-size:15px;padding:8px;border:1px solid #cfd8dc;border-radius:8px;background:#fff;}
+  .hayami-kin{margin-top:10px;font-size:14px;}
+  .hayami-kin b{font-size:18px;color:var(--teal-dark);}
+  .hayami-btn{width:100%;margin-top:10px;background:var(--teal-deep);color:#fff;font-size:15px;font-weight:700;border:none;border-radius:10px;padding:12px;}
+  .hayami-btn:disabled{opacity:.5;}
+  .hayami-msg{white-space:pre-wrap;font-size:13px;margin-top:8px;}
+  .hayami-msg.ng{color:#c62828;}
+
   /* ============================================================
      PDF概算見積書の紙
      ふだんは隠れていて、ボタンを押すと画面いっぱいに出ます
@@ -521,6 +536,21 @@
       <div class="pdf-note">
         印刷の画面が出ます。iPhoneは「共有」→「プリント」→ 指を広げて<b>PDFとして保存</b>、
         パソコンは送信先を<b>PDFに保存</b>に変えてください。
+      </div>
+
+      <!-- 早見表に登録（陽気だけ）。合言葉を覚えた端末でしか出ません -->
+      <div class="hayami-box" id="hayamiBox" hidden>
+        <div class="ttl">📋 早見表に登録（陽気だけ）</div>
+        <label>出発地（施設名）</label>
+        <div class="two"><input type="text" id="hkFrom" list="hkList"><select id="hkFromM"></select></div>
+        <div class="hayami-msg" id="hkFromShin"></div>
+        <label>到着地（ご自宅は町名まで。例：南城市佐敷）</label>
+        <div class="two"><input type="text" id="hkTo" list="hkList"><select id="hkToM"></select></div>
+        <div class="hayami-msg" id="hkToShin"></div>
+        <datalist id="hkList"></datalist>
+        <div class="hayami-kin" id="hkKin"></div>
+        <button type="button" class="hayami-btn" id="hkBtn">早見表に登録する</button>
+        <div class="hayami-msg" id="hkMsg"></div>
       </div>
     </div>
 
@@ -1227,6 +1257,120 @@ function postFare(){
   }catch(e){}
 }
 window.addEventListener("load", postFare);
+
+/* ============================================================
+   早見表に登録（陽気だけ）
+   ・料金早見表くん（GAS）の受け皿へ、タクシーメーターの分（初乗り＋距離加算）だけを送る。
+     基本介助料・時間加算・その他料金は送らない。
+   ・いっしょに「そのほかの料金」の定数も送る。パンフレットの下の表は、いつもこの見積もり君の数字になる。
+   ・合言葉を覚えた端末でしか出ない。最初に1回だけ、アドレスの最後に ?hk=合言葉 を付けて開く。
+     合言葉はこの端末に覚えさせて、アドレスからはすぐ消す。
+   ・合言葉が合わなければ受け皿が断るので、ボタンを見られても登録はできない。
+   ============================================================ */
+const HAYAMI_URL = "https://script.google.com/macros/s/AKfycbz9oClAIDLSPUZtyq0On_mYbIa6-OG-9S_yuOzhpUdIdZY7tDhyWQfEGFTEotW2h7HK6A/exec";   // 料金早見表くんのウェブアプリのアドレス（/exec で終わるもの）。空のあいだはボタンが出ない
+const HAYAMI_MEJIRUSHI = ["病院","透析","施設","地域","その他"];
+
+function hayamiKey(){
+  try{
+    const q = new URLSearchParams(location.search);
+    const k = q.get("hk");
+    if(k){
+      localStorage.setItem("yk_hayami_key", k);
+      q.delete("hk");
+      try{ history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }catch(e){}
+    }
+    return localStorage.getItem("yk_hayami_key") || "";
+  }catch(e){ return ""; }
+}
+const HAYAMI_KEY = hayamiKey();
+
+function hayamiKin(){
+  if(!EST){ $("hkKin").textContent = "先に「見積りを計算する」を押してください。"; return; }
+  $("hkKin").innerHTML = `登録する金額：<b>約${EST.kyoriUnchin.toLocaleString("ja-JP")}円</b>（${EST.km}km・メーターの分だけ／${$("sharyu").value}・${$("kubun").value}）`;
+}
+
+function hayamiSetup(){
+  if(!HAYAMI_URL || !HAYAMI_KEY) return;
+  const opts = HAYAMI_MEJIRUSHI.map(m=>`<option>${m}</option>`).join("");
+  $("hkFromM").innerHTML = opts; $("hkToM").innerHTML = opts;
+  $("hayamiBox").hidden = false;
+  $("calcBtn").addEventListener("click", ()=>{
+    if(!$("hkFrom").value.trim()) $("hkFrom").value = $("mapFrom").value.trim();
+    if(!$("hkTo").value.trim())   $("hkTo").value   = $("mapTo").value.trim();
+    hayamiShinki("hkFrom"); hayamiShinki("hkTo");
+    $("hkMsg").textContent = "";
+    hayamiKin();
+  });
+  $("hkBtn").addEventListener("click", hayamiSend);
+  ["hkFrom","hkTo"].forEach(id => $(id).addEventListener("input", ()=>hayamiShinki(id)));
+  hayamiKouho();
+}
+
+/* 登録ずみの施設名を候補に出す。同じ施設が別の名前で増えると、早見表が探しにくくなるため */
+let HAYAMI_KOUHO = [];
+function hayamiKouho(){
+  fetch(HAYAMI_URL + "?mode=list&k=" + encodeURIComponent(HAYAMI_KEY))
+    .then(r => r.json())
+    .then(r => {
+      if(!r.ok) return;
+      HAYAMI_KOUHO = r.shisetsu || [];
+      $("hkList").innerHTML = HAYAMI_KOUHO.map(h => `<option value="${h.name.replace(/"/g,"&quot;")}">${h.mejirushi}</option>`).join("");
+      hayamiShinki("hkFrom"); hayamiShinki("hkTo");
+    })
+    .catch(()=>{});
+}
+function hayamiKagi(s){ return String(s||"").replace(/[\s　]/g, ""); }
+/* 候補にある名前なら目印も合わせる。無い名前なら「新しい施設になります」と知らせる */
+function hayamiShinki(id){
+  const v = hayamiKagi($(id).value);
+  const out = $(id + "Shin");
+  if(!v){ out.textContent = ""; return; }
+  // 名称か別名（施設シートの「別名」列）が同じなら、登録ずみの施設
+  const hit = HAYAMI_KOUHO.find(h => hayamiKagi(h.name) === v
+    || String(h.betsumei||"").split(/[、,，]/).some(b => hayamiKagi(b) && hayamiKagi(b) === v));
+  if(hit){
+    $(id + "M").value = hit.mejirushi;
+    out.className = "hayami-msg";
+    out.textContent = hayamiKagi(hit.name) === v ? "" : "→ 「" + hit.name + "」として登録されます";
+    return;
+  }
+  const niteru = HAYAMI_KOUHO.filter(h => { const k = hayamiKagi(h.name); return k.includes(v) || v.includes(k); }).map(h => h.name);
+  out.className = "hayami-msg ng";
+  out.textContent = "新しい施設として登録されます。" + (niteru.length ? "似た名前：" + niteru.slice(0,3).join("、") : "目印を選んでください。");
+}
+
+function hayamiSend(){
+  calc();   // 入力を変えたあとでも、いまの数字で送る
+  hayamiKin();
+  const from = $("hkFrom").value.trim(), to = $("hkTo").value.trim();
+  const msg = $("hkMsg");
+  if(!from || !to){ msg.className = "hayami-msg ng"; msg.textContent = "出発地と到着地を入れてください。"; return; }
+  if(!(EST.km > 0)){ msg.className = "hayami-msg ng"; msg.textContent = "距離が0kmです。"; return; }
+  const data = {
+    key: HAYAMI_KEY, from, to, fromMejirushi: $("hkFromM").value, toMejirushi: $("hkToM").value,
+    meter: EST.kyoriUnchin, km: EST.km, sharyu: $("sharyu").value, kubun: $("kubun").value,
+    ryokin: {
+      kaijo: parseInt($("kaijo").defaultValue) || 0,
+      support: SUPPORT_AMOUNTS, isu: PRESETS, kaidan: KAIDAN_TANKA,
+      tsukisoiBase: TSUKISOI_BASE, tsukisoiStep: TSUKISOI_STEP, tsukisoiStepMin: TSUKISOI_STEP_MIN,
+      nichiyou: NICHIYOU_SHUKUJITSU, waribiki: SHOGAISHA_WARIBIKI
+    }
+  };
+  $("hkBtn").disabled = true;
+  msg.className = "hayami-msg"; msg.textContent = "登録しています…";
+  // text/plain で送る（GAS はこの形なら別サイトからでも受けて返事を返せる）
+  fetch(HAYAMI_URL, { method: "POST", body: JSON.stringify(data) })
+    .then(r => r.json())
+    .then(r => {
+      msg.className = "hayami-msg" + (r.ok ? "" : " ng");
+      msg.textContent = r.message || (r.ok ? "登録しました" : "登録できませんでした");
+      if(r.ok){ $("hkTo").value = ""; $("hkToShin").textContent = ""; hayamiKouho(); }
+      if(!r.ok && /合言葉/.test(r.message || "")){ try{ localStorage.removeItem("yk_hayami_key"); }catch(e){} }
+    })
+    .catch(e => { msg.className = "hayami-msg ng"; msg.textContent = "つながりませんでした：" + e.message; })
+    .finally(() => { $("hkBtn").disabled = false; });
+}
+hayamiSetup();
 </script>
 </body>
 </html>
