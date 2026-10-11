@@ -121,6 +121,7 @@
     background:#fff;font-size:22px;font-weight:700;border:1.5px solid var(--line);
   }
   .time-box .field.big input::placeholder{color:#a8bab6;font-weight:700;}
+  #km::placeholder{color:#a8bab6;font-weight:700;}   /* 走行距離も所要時間と同じ薄い0（入っていない印） */
   /* バスレーン補正のチェックボックス（押すとオン・オフが切り替わる四角い印） */
   .check{
     display:flex;align-items:flex-start;gap:9px;
@@ -424,7 +425,7 @@
     <!-- 走行距離 -->
     <div class="highlight">
       <label>走行距離（km）<span class="hint">／ マップで調べた距離を入力</span></label>
-      <input type="number" id="km" value="0" min="0" step="0.1" inputmode="decimal">
+      <input type="number" id="km" value="" placeholder="0" min="0" step="0.1" inputmode="decimal">
     </div>
 
     <!-- 時間加算（渋滞でゆっくり走る・止まっている分の料金） -->
