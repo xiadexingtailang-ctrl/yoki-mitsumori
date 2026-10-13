@@ -991,6 +991,26 @@ $("addOther").addEventListener("click", ()=>makeOtherRow());
    グーグルマップが別の画面で開きます。そこに出た距離（km）を
    「走行距離」に手で入力してください。
    ============================================================ */
+/* ============================================================
+   地図を開くときの読み替え（R8.10.13）
+   ・移転した病院は、昔の呼び名で地図を開くと古い場所を指す。
+     地図に渡すときだけ、新しい場所の名前＋住所に置き換える
+     （画面の入力欄の文字は変えない）
+   ・足すときは左に呼び名（空白は無視）、右に地図で探す言葉
+   ============================================================ */
+const NAVI_YOMIKAE = {
+  "琉大病院":                     "琉球大学病院 沖縄県宜野湾市字喜友名1076",
+  "琉大":                         "琉球大学病院 沖縄県宜野湾市字喜友名1076",
+  "琉球大学病院":                 "琉球大学病院 沖縄県宜野湾市字喜友名1076",
+  "琉球大学附属病院":             "琉球大学病院 沖縄県宜野湾市字喜友名1076",
+  "琉大附属病院":                 "琉球大学病院 沖縄県宜野湾市字喜友名1076",
+  "琉球大学病院普天間キャンパス": "琉球大学病院 沖縄県宜野湾市字喜友名1076"
+};
+function naviYomikae(s){
+  const k = String(s||"").replace(/[\s　]/g, "");
+  return NAVI_YOMIKAE[k] || s;
+}
+
 $("mapBtn").addEventListener("click", ()=>{
   const from = $("mapFrom").value.trim();
   const to   = $("mapTo").value.trim();
@@ -1002,8 +1022,8 @@ $("mapBtn").addEventListener("click", ()=>{
   }
   warn.style.display = "none";
   let url = "https://www.google.com/maps/dir/?api=1&travelmode=driving";
-  if(from) url += "&origin=" + encodeURIComponent(from);
-  if(to)   url += "&destination=" + encodeURIComponent(to);
+  if(from) url += "&origin=" + encodeURIComponent(naviYomikae(from));
+  if(to)   url += "&destination=" + encodeURIComponent(naviYomikae(to));
   const a = document.createElement("a");
   a.href = url; a.target = "_blank"; a.rel = "noopener";
   document.body.appendChild(a);
