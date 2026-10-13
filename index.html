@@ -65,6 +65,11 @@
     background:var(--field);border:1.5px solid var(--line);border-radius:12px;
     padding:13px 14px;outline:none;transition:border-color .15s,box-shadow .15s;
   }
+  /* スマホで画面が揺れないように（R8.10.13）
+     ・入力欄は16px以上：アイフォンは16px未満の欄を触ると勝手に拡大する
+     ・ボタン類はダブルタップ拡大を止める：±ボタンの連打で画面が拡大しない
+     ・指2本の拡大（ピンチ）は止めていない（文字を大きくして見たい方のため） */
+  button,input,select,label,a,summary{touch-action:manipulation;}
   input:focus,select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,.15);}
   select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230d9488' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px;}
 
@@ -152,8 +157,8 @@
 
   /* その他料金の行 */
   .other-row{display:flex;gap:8px;margin-bottom:8px;}
-  .other-row .other-name{flex:1.5;font-size:15px;padding:11px 12px;}
-  .other-row .other-amt{flex:1;font-size:15px;padding:11px 12px;}
+  .other-row .other-name{flex:1.5;font-size:16px;padding:11px 12px;}
+  .other-row .other-amt{flex:1;font-size:16px;padding:11px 12px;}
   .other-row .del-other{
     width:44px;flex:none;background:#f1f5f4;color:var(--ink-soft);
     font-size:22px;font-weight:700;border-radius:10px;padding:0;letter-spacing:0;
@@ -167,7 +172,7 @@
     padding:3px 9px;margin-bottom:8px;
   }
   .preset-row .other-name,
-  .preset-row .other-amt{padding:11px 34px 11px 12px;font-size:15px;}
+  .preset-row .other-amt{padding:11px 34px 11px 12px;font-size:16px;}
   .preset-spacer{width:44px;flex:none;}
 
   /* 定型メニューの見出し */
@@ -323,7 +328,7 @@
   .hayami-box .two{display:flex;gap:6px;}
   .hayami-box .two input{flex:1;min-width:0;}
   .hayami-box .two select{width:92px;}
-  .hayami-box input,.hayami-box select{font-size:15px;padding:8px;border:1px solid #cfd8dc;border-radius:8px;background:#fff;}
+  .hayami-box input,.hayami-box select{font-size:16px;padding:8px;border:1px solid #cfd8dc;border-radius:8px;background:#fff;}
   .hayami-kin{margin-top:10px;font-size:14px;}
   .hayami-kin b{font-size:18px;color:var(--teal-dark);}
   .hayami-btn{width:100%;margin-top:10px;background:var(--teal-deep);color:#fff;font-size:15px;font-weight:700;border:none;border-radius:10px;padding:12px;}
