@@ -478,7 +478,7 @@
       </div>
     </div>
 
-    <!-- 時間加算の秒数（今日の日付で自動的に 160秒／140秒 が入ります） -->
+    <!-- 時間加算の秒数（今日の日付とえらんだ車種・区分の秒数が自動で入ります） -->
     <div class="two">
       <div class="field">
         <label>時間加算（秒）<span class="hint">／ 速度10km以下</span></label>
@@ -657,10 +657,12 @@
    ★このファイルは「現行運賃」と「新運賃」の両方を持ち、
      日付で自動的に切り替わります。
      ・2026年9月1日より前 → 現行運賃（初乗り1.75km／時間加算160秒）
-     ・2026年9月1日から   → 新運賃（初乗り1.65km／時間加算140秒）
+     ・2026年9月1日から   → 新運賃（初乗り1.65km／時間加算は車種・区分ごと）
    切り替え日を変えたいときは、下の SWITCH_DATE の日付を書きかえます。
    運賃額を直したいときは、該当する table の数字を書きかえます。
    時間加算の秒数を直したいときは、jikanSec の数字を書きかえます。
+   新運賃は車種・区分ごとに table の中の jikanSec を使います
+   （総合事務局 R8.7.10 公示 別添1。待料金も同じ秒数）。
    ============================================================ */
 const SWITCH_DATE = new Date(2026, 8, 1, 0, 0, 0); // 2026年9月1日 0時（8＝9月）
 
@@ -693,23 +695,23 @@ const FARE_GENKO = {
 const FARE_SHIN = {
   label: "新運賃（9月改定）",
   hatsuneKyori: 1.65,
-  jikanSec: 140,          // 時間加算：速度10km以下 140秒ごとに100円
+  jikanSec: 140,          // 時間加算の予備（ふだんは下の table の jikanSec を使う）
   table: {
     "特定大型": {
-      "上限": { hatsune: 810, kasanM: 248, kasanGaku: 100 },
-      "A":    { hatsune: 800, kasanM: 251, kasanGaku: 100 },
-      "B":    { hatsune: 790, kasanM: 254, kasanGaku: 100 },
-      "下限": { hatsune: 780, kasanM: 258, kasanGaku: 100 }
+      "上限": { hatsune: 810, kasanM: 248, kasanGaku: 100, jikanSec: 100 },
+      "A":    { hatsune: 800, kasanM: 251, kasanGaku: 100, jikanSec: 105 },
+      "B":    { hatsune: 790, kasanM: 254, kasanGaku: 100, jikanSec: 105 },
+      "下限": { hatsune: 780, kasanM: 258, kasanGaku: 100, jikanSec: 105 }
     },
     "大型": {
-      "上限": { hatsune: 710, kasanM: 291, kasanGaku: 100 },
-      "A":    { hatsune: 700, kasanM: 295, kasanGaku: 100 },
-      "下限": { hatsune: 690, kasanM: 299, kasanGaku: 100 }
+      "上限": { hatsune: 710, kasanM: 291, kasanGaku: 100, jikanSec: 120 },
+      "A":    { hatsune: 700, kasanM: 295, kasanGaku: 100, jikanSec: 120 },
+      "下限": { hatsune: 690, kasanM: 299, kasanGaku: 100, jikanSec: 120 }
     },
     "普通": {
-      "上限": { hatsune: 650, kasanM: 350, kasanGaku: 100 },
-      "A":    { hatsune: 640, kasanM: 355, kasanGaku: 100 },
-      "下限": { hatsune: 630, kasanM: 361, kasanGaku: 100 }
+      "上限": { hatsune: 650, kasanM: 350, kasanGaku: 100, jikanSec: 140 },
+      "A":    { hatsune: 640, kasanM: 355, kasanGaku: 100, jikanSec: 145 },
+      "下限": { hatsune: 630, kasanM: 361, kasanGaku: 100, jikanSec: 145 }
     }
   }
 };
@@ -717,7 +719,7 @@ const FARE_SHIN = {
 /* 今日の日付で、使う運賃を自動でえらぶ */
 const ACTIVE = (new Date() >= SWITCH_DATE) ? FARE_SHIN : FARE_GENKO;
 const HATSUNE_KYORI = ACTIVE.hatsuneKyori; // 初乗り距離（km）
-const JIKAN_SEC     = ACTIVE.jikanSec;     // 時間加算の秒数（160 または 140）
+const JIKAN_SEC     = ACTIVE.jikanSec;     // 時間加算の秒数の予備（新運賃は table の jikanSec を使う）
 const fareTable = ACTIVE.table;
 
 /* 時間加算のきまり
@@ -769,8 +771,8 @@ function applyFare(){
   $("hatsune").value=f.hatsune;
   $("kasanKm").value=f.kasanM;
   $("kasanGaku").value=f.kasanGaku;
-  // 時間加算の秒数は車種・区分で変わらないので、今の運賃セットの値を入れます
-  $("jikanByo").value  = JIKAN_SEC;
+  // 時間加算の秒数は車種・区分ごと（table に無ければ運賃セットの値）
+  $("jikanByo").value  = f.jikanSec || JIKAN_SEC;
   $("jikanGaku").value = JIKAN_TANKA;
   if(typeof updateJikanView === "function") updateJikanView();
 }
@@ -1024,13 +1026,18 @@ $("mapBtn").addEventListener("click", ()=>{
 /* ============================================================
    時間加算と待機料
    どちらも「時間加算（秒）」と「加算額（円）」の枠の数字を使います。
-   その枠には、今日の日付で 160秒／140秒 が自動で入っています。
+   その枠には、今日の日付とえらんだ車種・区分の秒数が自動で入っています。
    ・時間加算 … （マップの所要時間 － 空いてるときの目安）の秒数 ÷ 秒 × 加算額
    ・待機料   … 待機時間の秒数 ÷ 秒 × 加算額
    どちらも100円未満（1回に満たない分）は切り捨てです。
    ============================================================ */
 /* 枠に入っている秒数・加算額を読む */
-function getByo(){  return Math.max(1, parseInt($("jikanByo").value)||JIKAN_SEC); }
+/* えらんでいる車種・区分の秒数（table に無ければ運賃セットの値） */
+function hyoujunByo(){
+  const f = (fareTable[$("sharyu").value]||{})[$("kubun").value];
+  return (f && f.jikanSec) || JIKAN_SEC;
+}
+function getByo(){  return Math.max(1, parseInt($("jikanByo").value)||hyoujunByo()); }
 function getGaku(){ return Math.max(0, parseInt($("jikanGaku").value)||JIKAN_TANKA); }
 
 function calcJikan(){
@@ -1260,7 +1267,7 @@ setInterval(postHeight, 1000);   // 念のため定期的にも調整
 function postFare(){
   try{
     const f   = ACTIVE.table["普通"]["上限"];
-    const sec = ACTIVE.jikanSec;
+    const sec = f.jikanSec || ACTIVE.jikanSec;
     const mm  = Math.floor(sec / 60), ss = sec % 60;
     const wari = SHOGAISHA_WARIBIKI * 10;
     const y = n => n.toLocaleString("ja-JP");
