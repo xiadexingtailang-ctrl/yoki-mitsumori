@@ -247,7 +247,7 @@
   @keyframes pop{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
   .result .breakdown{font-size:14px;color:var(--ink-soft);}
   .result .breakdown .row{display:flex;justify-content:space-between;padding:3px 0;}
-  .result .breakdown .row span:last-child{font-weight:700;color:var(--ink);}
+  .result .breakdown .row span:last-child{font-weight:700;color:var(--ink);white-space:nowrap;padding-left:8px;}
   .result .total{
     text-align:center;margin-top:14px;padding-top:14px;border-top:2px dashed var(--teal);
   }
@@ -318,6 +318,7 @@
     padding:14px;letter-spacing:.5px;
   }
   .pdf-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+  .sms-btn{background:var(--orange);}
   .pdf-note b{color:var(--orange);}
 
   /* ============================================================
@@ -571,6 +572,12 @@
       <div class="pdf-note">
         印刷の画面が出ます。iPhoneは「共有」→「プリント」→ 指を広げて<b>PDFとして保存</b>、
         パソコンは送信先を<b>PDFに保存</b>に変えてください。
+      </div>
+      <!-- R8.11.8：見積もりの中身を文字にして、スマホのメッセージ（ショートメッセージ）を開く -->
+      <button type="button" class="pdf-btn sms-btn" id="smsBtn">💬 メッセージで送る（文字）</button>
+      <div class="pdf-note">
+        メッセージのアプリが開き、見積もりの文が入った状態になります。<b>宛先を選んで送信</b>してください。
+        パソコンでは開かないため、文をコピーします。
       </div>
     </div>
 
@@ -1154,10 +1161,8 @@ function calc(){
   const total = kyoriUnchin + kaijo + jikan.kingaku + taiki.kingaku + otherTotal - waribiki;   // 概算料金
 
   const y = n => n.toLocaleString("ja-JP");
-  let html = `<div class="row"><span>初乗り料金（〜${HATSUNE_KYORI}km）</span><span>${y(hatsune)}円</span></div>`;
-  if(kasanKaisu>0){
-    html += `<div class="row"><span>距離加算（${kasanM}m×${kasanKaisu}回）</span><span>${y(kasanKingaku)}円</span></div>`;
-  }
+  // R8.11.8 こうたさん：初乗りは分けずに距離料金に含めて1行で出す（お客様との意思疎通のため）
+  let html = `<div class="row"><span>距離料金（${km}km・初乗りを含む）</span><span>${y(kyoriUnchin)}円</span></div>`;
   html += `<div class="row"><span>基本介助料</span><span>${y(kaijo)}円</span></div>`;
   if(jikan.kingaku>0){
     const busText = jikan.bus ? "・バスレーン補正あり" : "";
@@ -1240,6 +1245,62 @@ $("pdfBtn").addEventListener("click", ()=>{
   $("printBtn").addEventListener("click", ()=>window.print());
   // 「閉じる」…… 見積もり君の画面にもどります
   $("closeSheet").addEventListener("click", ()=>$("sheet").classList.remove("show"));
+});
+
+/* ============================================================
+   メッセージで送る（R8.11.8）
+   ・計算をやり直して、見積もりを文字にまとめる（PDF見積書と同じ項目）
+   ・スマホは sms: でメッセージのアプリを開く。宛先は空のまま、本文だけ入れる
+   ・パソコンなど開けない端末では、文をコピーして知らせる
+   ============================================================ */
+function smsBun(){
+  const y = n => n.toLocaleString("ja-JP") + "円";
+  const d = new Date();
+  const from = $("mapFrom").value.trim();
+  const to   = $("mapTo").value.trim();
+  // R8.11.8 こうたさん「縦にそろえて」：項目名を全角スペースで同じ幅にして「：」の位置をそろえる。
+  // スマホの文字は漢字がほぼ同じ幅なので、項目名は全角だけにする（半角の数字は値の側へ）
+  const R = [];
+  if(from) R.push(["出発地", from]);
+  if(to)   R.push(["到着地", to]);
+  R.push(["走行距離", EST.km + "km"]);
+  R.push(["距離料金", y(EST.kyoriUnchin) + "（初乗り込み）"]);
+  R.push(["基本介助料", y(EST.kaijo)]);
+  if(EST.jikan.kingaku > 0) R.push(["時間加算", y(EST.jikan.kingaku)]);
+  if(EST.taiki.kingaku > 0) R.push(["待機料", y(EST.taiki.kingaku) + "（" + Math.round(EST.taiki.min) + "分）"]);
+  EST.otherItems.forEach(it => R.push([it.nm, y(it.amt)]));
+  if(EST.waribiki > 0) R.push(["障害者割引", "－" + y(EST.waribiki)]);
+  const GOKEI = ["合計", y(EST.total) + "（概算）"];
+  // 幅は短い項目名に合わせる（長い名前の行だけはみ出す）。最低5文字＝「基本介助料」
+  const haba = Math.max(5, Math.min(6, Math.max.apply(null, R.map(r => r[0].length))));
+  const gyo = r => r[0] + "　".repeat(Math.max(0, haba - r[0].length)) + "：" + r[1];
+  const L = [];
+  L.push("【介護タクシー陽気　概算見積もり】");
+  L.push((d.getMonth()+1) + "月" + d.getDate() + "日");
+  R.forEach(r => L.push(gyo(r)));
+  L.push("――――――――――");
+  L.push(gyo(GOKEI));
+  L.push("※概算です。実際の料金はメーターに基づきます。");
+  return L.join("\n");
+}
+function smsKopi(bun){
+  const ok = () => alert("見積もりの文をコピーしました。メッセージやLINEに貼り付けて送ってください。");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(bun).then(ok, () => prompt("この文をコピーしてください", bun));
+  }else{
+    prompt("この文をコピーしてください", bun);
+  }
+}
+$("smsBtn").addEventListener("click", ()=>{
+  calc();
+  if(!EST) return;
+  const bun = smsBun();
+  const ua = navigator.userAgent;
+  const iphone = /iPhone|iPad|iPod/.test(ua);
+  const sumaho = iphone || /Android/.test(ua);
+  if(!sumaho){ smsKopi(bun); return; }
+  // iPhone は「sms:&body=」、アンドロイドは「sms:?body=」
+  location.href = "sms:" + (iphone ? "&" : "?") + "body=" + encodeURIComponent(bun);
 });
 
 initSelects();
